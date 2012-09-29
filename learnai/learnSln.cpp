@@ -41,33 +41,19 @@ struct chess_piece
 	}
 };
 
-#define TEST_QUEEN_1(N) {	queen##N obj; queen##N##::queen_stack k= obj.layout_queen(); obj.view(); }
-#define TEST_QUEEN_2(N) {	queen##N obj; queen##N##::queen_stack k= obj.layout_queen_v2(); obj.view(); }
-
-#define TEST_QUEEN_SET(N) TEST_QUEEN_##N(4) TEST_QUEEN_##N(5) \
-	TEST_QUEEN_##N(6) TEST_QUEEN_##N(7) TEST_QUEEN_##N(8) TEST_QUEEN_##N(9) TEST_QUEEN_##N(10)
-
 int main(int argc, _TCHAR* argv[])
 {
-	typedef ntqueen<chess_piece, 4> queen4;
-	typedef ntqueen<chess_piece, 5> queen5;
-	typedef ntqueen<chess_piece, 6> queen6;
-	typedef ntqueen<chess_piece, 7> queen7;
-	typedef ntqueen<chess_piece, 8> queen8;
-	typedef ntqueen<chess_piece, 9> queen9;
-	typedef ntqueen<chess_piece, 10> queen10;
-
-	unsigned long t1= timeGetTime();
-
-	TEST_QUEEN_SET(1);
-
 	unsigned long t2= timeGetTime();
 
-	TEST_QUEEN_SET(2);
+	typedef ntqueen<chess_piece, 8> queen11;
+	queen11 obj; 
+	queen11::queen_stack k= obj.layout_queen_v3(); 
+	obj.view();
+	printf(k.log_content.c_str());
 
 	unsigned long t3= timeGetTime();
 
-	printf("%d, %d\n", t3-t2, t2-t1);
+	printf("%d\n", t3-t2);
 
 	return 0;
 }

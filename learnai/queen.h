@@ -1,11 +1,17 @@
 #pragma once
 
+
 enum { FORCE_DIR= 4 };
 
 template<unsigned int SIZE>
 struct ntpos_stack_uz
 {
-	ntpos_stack_uz() : usize(0) {}
+	ntpos_stack_uz() 
+	: usize(0)
+	, log_enable(false) 
+	{
+
+	}
 
 	ntpos_ui pos[SIZE];
 	unsigned int usize;
@@ -15,6 +21,17 @@ struct ntpos_stack_uz
 		pos[usize].x = ax;
 		pos[usize].y = ay;
 		++usize;
+
+		if (log_enable)
+		{
+			for(unsigned int i=0; i<usize-1; ++i)
+			{
+				log_content+= "  ";
+			}
+			char buff[256];
+			sprintf_s(buff, ">%d,%d\n", ax, ay);
+			log_content += buff;
+		}
 	}
 
 	void pop()
@@ -22,6 +39,17 @@ struct ntpos_stack_uz
 		if (usize> 0)
 		{
 			--usize;
+
+			if (log_enable)
+			{
+				for(unsigned int i=0; i<usize; ++i)
+				{
+					log_content+= "  ";
+				}
+				char buff[256];
+				sprintf_s(buff, "<%d,%d\n", pos[usize].x, pos[usize].y);
+				log_content += buff;
+			}
 		}
 	}
 
@@ -29,6 +57,9 @@ struct ntpos_stack_uz
 	{
 		return usize;
 	}
+
+	bool log_enable;
+	std::string log_content;
 };
 
 template<unsigned int D1SIZE>
@@ -93,6 +124,20 @@ struct force_range
 	int force[BOUND_SIZE][BOUND_SIZE];
 };
 
+struct force_obj
+{
+	force_obj(unsigned int acod, unsigned int maxy): cod(acod), max_y(maxy) {}
+	unsigned int cod;
+	unsigned int max_y;
+};
+
+typedef std::vector<force_obj> force_objs;
+
+inline bool operator < ( const force_obj& a, const force_obj& b)
+{
+	return a.max_y < b.max_y;
+}
+
 template<typename QUEEN_OBJECT, unsigned int A_BOUND_SIZE>
 struct ntqueen 
 {
@@ -109,6 +154,89 @@ struct ntqueen
 	{
 		memset(this, 0, sizeof(*this));
 	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	bool layout_unique_v3(queen_stack& tk, queen_range& record)
+	{
+		size_t size = tk.size();
+		for(unsigned int y=0; y<BOUND_SIZE; ++y)
+		{
+			force_objs objs;
+			objs.reserve(BOUND_SIZE);
+
+			for(unsigned int x=0; x<BOUND_SIZE; ++x)
+			{
+				if (!record.is_empty(y, x))
+				{
+					continue;
+				}
+
+				if (! put_test(y, x))
+				{
+					continue;
+				}
+
+				force_flag_2d flag2d;
+				get_influence(x, y, flag2d);
+				unsigned int num= get_max_line(flag2d);
+				objs.push_back(force_obj(x, num));
+			}
+
+			std::sort(objs.begin(), objs.end());
+
+			for(unsigned int i=0; i<objs.size(); ++i)
+			{
+				unsigned int x = objs[i].cod;
+
+				if (!record.is_empty(y, x))
+				{
+					continue;
+				}
+
+				if (! put_test(y, x))
+				{
+					continue;
+				}
+
+				tk.push(x, y);
+				set(y, x, create_entity());
+				add_force_to_range(y, x, record);
+
+				if ( tk.size() == BOUND_SIZE)
+				{
+					return true;
+				}
+
+				if (!layout_unique_v3(tk, record))
+				{
+					set(y, x, create_empty());
+					tk.pop();
+					dec_force_to_range(y, x, record);
+				}
+				else
+				{
+					if ( tk.size() == BOUND_SIZE)
+					{
+						return true;
+					}
+				}
+			}
+		}
+
+		return tk.size() > size;
+	}
+
+	queen_stack layout_queen_v3()
+	{
+		queen_stack r;
+		r.log_enable= true;
+		queen_range record;
+		layout_unique_v3(r, record);
+		return r;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
 
 	void add_force_to_range(unsigned int y, unsigned int x, queen_range& record)
 	{
@@ -172,6 +300,13 @@ struct ntqueen
 					tk.pop();
 					dec_force_to_range(y, x, record);
 				}
+				else
+				{
+					if ( tk.size() == BOUND_SIZE)
+					{
+						return true;
+					}
+				}
 			}
 		}
 
@@ -188,7 +323,7 @@ struct ntqueen
 
 	//////////////////////////////////////////////////////////////////////////
 
-	bool layout_unique(queen_stack& tk)
+	bool layout_unique_v1(queen_stack& tk)
 	{
 		size_t size = tk.size();
 		for(unsigned int y=0; y<BOUND_SIZE; ++y)
@@ -208,7 +343,7 @@ struct ntqueen
 					return true;
 				}
 
-				if (!layout_unique(tk))
+				if (!layout_unique_v1(tk))
 				{
 					set(y, x, create_empty());
 					tk.pop();
@@ -219,10 +354,10 @@ struct ntqueen
 		return tk.size() > size;
 	}
 
-	queen_stack layout_queen()
+	queen_stack layout_queen_v1()
 	{
 		queen_stack r;
-		layout_unique(r);
+		layout_unique_v1(r);
 		return r;
 	}
 
@@ -329,7 +464,24 @@ struct ntqueen
 		return is_emtpy_element( get(y, x) );
 	}
 
-	unsigned int counter_force(force_flag_2d& lineobj) const
+	unsigned int get_max_line(const force_flag_2d& lineobj) const
+	{
+		unsigned int max_y = 0;
+		for( unsigned int i=2; i<FORCE_DIR; ++i)
+		{
+			const force_flag_1d& d1 = lineobj.lines[i];
+			for(unsigned int j= 0; j<d1.size; ++j)
+			{
+				if (max_y < d1.pos[j].y)
+				{
+					max_y = d1.pos[j].y;
+				}
+			}
+		}
+		return max_y;
+	}
+
+	unsigned int counter_force(const force_flag_2d& lineobj) const
 	{
 		unsigned int f= 0;
 		for( unsigned int i=0; i<FORCE_DIR; ++i)
@@ -380,7 +532,7 @@ struct ntqueen
 
 	void _sprint_head(std::string& str)
 	{
-		str += "   ";
+		str += "    ";
 
 		for(unsigned int i=0; i<BOUND_SIZE; ++i)
 		{
@@ -388,7 +540,7 @@ struct ntqueen
 			str+= " ";
 		}
 
-		str += "\n ©°";
+		str += "\n  ©°";
 
 		for(unsigned int i=0; i<BOUND_SIZE; ++i)
 		{
@@ -402,7 +554,7 @@ struct ntqueen
 	{
 		for(unsigned int y=0; y<BOUND_SIZE; ++y)
 		{
-			str += ntbase::tostr(y);
+			str += ntbase::tostr2d(y);
 			str += "©¦";
 
 			for(unsigned int x=0; x<BOUND_SIZE; ++x)
@@ -418,7 +570,7 @@ struct ntqueen
 
 	void _sprint_end(std::string& str)
 	{
-		str += " ©¸";
+		str += "  ©¸";
 
 		for(unsigned int i=0; i<BOUND_SIZE; ++i)
 		{

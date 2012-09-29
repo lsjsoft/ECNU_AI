@@ -5,6 +5,7 @@
 #include <vector>
 #include <stack>
 #include <string>
+#include <algorithm>
 
 class ntbase
 {
@@ -22,8 +23,14 @@ public:
 		sprintf_s(buff, "%d", i);
 		return buff;
 	}
-};
 
+	static const char* tostr2d(unsigned int i)
+	{
+		static char buff[32];
+		sprintf_s(buff, "%02d", i);
+		return buff;
+	}
+};
 
 template<typename T>
 struct ntpos_t
