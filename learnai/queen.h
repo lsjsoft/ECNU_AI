@@ -31,11 +31,11 @@ struct ntpos_stack_uz
 	}
 };
 
-template<unsigned int SIZE>
+template<unsigned int D1SIZE>
 struct flag_1d
 {
 	flag_1d(): size(0) {}
-	ntpos_ui pos[SIZE];
+	ntpos_ui pos[D1SIZE];
 	unsigned int size;
 
 	void add(unsigned int x, unsigned int y)
@@ -46,18 +46,51 @@ struct flag_1d
 	}
 };
 
-template<unsigned int SIZE>
+template<unsigned int D1SIZE, unsigned int D2SIZE>
 struct flag_2d
 {
-	flag_1d<SIZE> lines[FORCE_DIR];
+	flag_1d<D1SIZE> lines[D2SIZE];
+
+	enum { SIZE = D2SIZE };
 
 	void clear()
 	{
-		for(unsigned int i=0; i<FORCE_DIR; ++i)
+		for(unsigned int i=0; i<D2SIZE; ++i)
 		{
 			lines[i].size = 0;
 		}
 	}
+};
+
+template <unsigned int BOUND_SIZE>
+struct force_range
+{
+	force_range()
+	{
+		memset(this, 0, sizeof(*this));
+	}
+
+	void add_force(unsigned int y, unsigned int x)
+	{
+		++force[y][x];
+	}
+
+	void dec_force(unsigned int y, unsigned int x)
+	{
+		--force[y][x];
+	}
+
+	int at(unsigned int y, unsigned int x) const 
+	{
+		return force[y][x];
+	}
+
+	int is_empty(unsigned int y, unsigned int x) const 
+	{
+		return at(y, x) == 0;
+	}
+
+	int force[BOUND_SIZE][BOUND_SIZE];
 };
 
 template<typename QUEEN_OBJECT, unsigned int A_BOUND_SIZE>
@@ -68,13 +101,92 @@ struct ntqueen
 	QUEEN_OBJECT bound[BOUND_SIZE][BOUND_SIZE];
 
 	typedef ntpos_stack_uz<BOUND_SIZE> queen_stack;
-	typedef flag_2d<BOUND_SIZE> queen_flag_2d;
-	typedef flag_1d<BOUND_SIZE> queen_flag_1d;
+	typedef flag_2d<BOUND_SIZE, FORCE_DIR> force_flag_2d;
+	typedef flag_1d<BOUND_SIZE> force_flag_1d;
+	typedef force_range<BOUND_SIZE> queen_range;
 
 	ntqueen()
 	{
 		memset(this, 0, sizeof(*this));
 	}
+
+	void add_force_to_range(unsigned int y, unsigned int x, queen_range& record)
+	{
+		force_flag_2d out;
+		get_influence(x, y, out);
+		for(unsigned int i=0; i<out.SIZE; ++i)
+		{
+			for(unsigned int j=0; j<out.lines[i].size; ++j)
+			{
+				ntpos_ui& pos= out.lines[i].pos[j];
+				record.add_force(pos.y, pos.x);
+			}
+		}
+		record.add_force(y, x);
+	}
+
+	void dec_force_to_range(unsigned int y, unsigned int x, queen_range& record)
+	{
+		force_flag_2d out;
+		get_influence(x, y, out);
+		for(unsigned int i=0; i<out.SIZE; ++i)
+		{
+			for(unsigned int j=0; j<out.lines[i].size; ++j)
+			{
+				ntpos_ui& pos= out.lines[i].pos[j];
+				record.dec_force(pos.y, pos.x);
+			}
+		}
+		record.dec_force(y, x);
+	}
+
+	bool layout_unique_v2(queen_stack& tk, queen_range& record)
+	{
+		size_t size = tk.size();
+		for(unsigned int y=0; y<BOUND_SIZE; ++y)
+		{
+			for(unsigned int x=0; x<BOUND_SIZE; ++x)
+			{
+				if (!record.is_empty(y, x))
+				{
+					continue;
+				}
+
+				if (! put_test(y, x))
+				{
+					continue;
+				}
+
+				tk.push(x, y);
+				set(y, x, create_entity());
+				add_force_to_range(y, x, record);
+
+				if ( tk.size() == BOUND_SIZE)
+				{
+					return true;
+				}
+
+				if (!layout_unique_v2(tk, record))
+				{
+					set(y, x, create_empty());
+					tk.pop();
+					dec_force_to_range(y, x, record);
+				}
+			}
+		}
+
+		return tk.size() > size;
+	}
+
+	queen_stack layout_queen_v2()
+	{
+		queen_stack r;
+		queen_range record;
+		layout_unique_v2(r, record);
+		return r;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
 
 	bool layout_unique(queen_stack& tk)
 	{
@@ -114,7 +226,7 @@ struct ntqueen
 		return r;
 	}
 
-	void get_influence(unsigned int x, unsigned int y, queen_flag_2d& out) const
+	void get_influence(unsigned int x, unsigned int y, force_flag_2d& out) const
 	{
 		unsigned int idx= 0;
 
@@ -160,12 +272,12 @@ struct ntqueen
 
 	bool put_test(unsigned int y, unsigned int x, bool log_invalid=false) const
 	{
-		if (!is_valid())
+		if (!is_empty_pos(y, x))
 		{
 			return false;
 		}
 
-		if (!is_empty_pos(y, x))
+		if (!is_valid())
 		{
 			return false;
 		}
@@ -217,12 +329,12 @@ struct ntqueen
 		return is_emtpy_element( get(y, x) );
 	}
 
-	unsigned int counter_force(queen_flag_2d& lineobj) const
+	unsigned int counter_force(force_flag_2d& lineobj) const
 	{
 		unsigned int f= 0;
 		for( unsigned int i=0; i<FORCE_DIR; ++i)
 		{
-			const queen_flag_1d& curr= lineobj.lines[i];
+			const force_flag_1d& curr= lineobj.lines[i];
 
 			for(unsigned int j=0; j<curr.size; ++j)
 			{
@@ -238,7 +350,7 @@ struct ntqueen
 
 	bool is_valid() const
 	{
-		queen_flag_2d out;
+		force_flag_2d out;
 		for(unsigned int y= 0; y< BOUND_SIZE; ++y)
 		{
 			for(unsigned int x=0; x< BOUND_SIZE; ++x)
