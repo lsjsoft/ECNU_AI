@@ -183,21 +183,16 @@ struct ntqueen
 				objs.push_back(force_obj(x, num));
 			}
 
+			if (objs.empty())
+			{
+				continue;
+			}
+
 			std::sort(objs.begin(), objs.end());
 
 			for(unsigned int i=0; i<objs.size(); ++i)
 			{
 				unsigned int x = objs[i].cod;
-
-				if (!record.is_empty(y, x))
-				{
-					continue;
-				}
-
-				if (! put_test(y, x))
-				{
-					continue;
-				}
 
 				tk.push(x, y);
 				set(y, x, create_entity());

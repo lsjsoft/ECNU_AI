@@ -45,13 +45,14 @@ int main(int argc, _TCHAR* argv[])
 {
 	unsigned long t2= timeGetTime();
 
-	typedef ntqueen<chess_piece, 8> queen11;
+	typedef ntqueen<chess_piece, 7> queen11;
 	queen11 obj; 
 	queen11::queen_stack k= obj.layout_queen_v3(); 
 	obj.view();
-	printf(k.log_content.c_str());
 
 	unsigned long t3= timeGetTime();
+
+	printf(k.log_content.c_str());
 
 	printf("%d\n", t3-t2);
 
