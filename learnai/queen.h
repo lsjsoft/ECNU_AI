@@ -61,7 +61,7 @@ struct flag_2d
 };
 
 template<typename QUEEN_OBJECT, unsigned int A_BOUND_SIZE>
-struct TQueen 
+struct ntqueen 
 {
 	enum { BOUND_SIZE=A_BOUND_SIZE };
 
@@ -71,12 +71,12 @@ struct TQueen
 	typedef flag_2d<BOUND_SIZE> queen_flag_2d;
 	typedef flag_1d<BOUND_SIZE> queen_flag_1d;
 
-	TQueen()
+	ntqueen()
 	{
 		memset(this, 0, sizeof(*this));
 	}
 
-	bool layout_queen(queen_stack& tk)
+	bool layout_unique(queen_stack& tk)
 	{
 		size_t size = tk.size();
 		for(unsigned int y=0; y<BOUND_SIZE; ++y)
@@ -96,7 +96,7 @@ struct TQueen
 					return true;
 				}
 
-				if (!layout_queen(tk))
+				if (!layout_unique(tk))
 				{
 					set(y, x, create_empty());
 					tk.pop();
@@ -107,11 +107,11 @@ struct TQueen
 		return tk.size() > size;
 	}
 
-	queen_stack layout_queenx()
+	queen_stack layout_queen()
 	{
-		queen_stack tk;
-		layout_queen(tk);
-		return tk;
+		queen_stack r;
+		layout_unique(r);
+		return r;
 	}
 
 	void get_influence(unsigned int x, unsigned int y, queen_flag_2d& out) const
@@ -170,7 +170,7 @@ struct TQueen
 			return false;
 		}
 
-		TQueen<QUEEN_OBJECT, BOUND_SIZE> obj(*this);
+		ntqueen<QUEEN_OBJECT, BOUND_SIZE> obj(*this);
 		obj.set(y, x, create_entity() );
 		bool result= obj.is_valid();
 
@@ -187,17 +187,17 @@ struct TQueen
 
 	bool is_emtpy_element(const QUEEN_OBJECT& v) const
 	{
-		return v == QUEEN_OBJECT(0);
+		return v.is_empty();
 	}
 
 	QUEEN_OBJECT create_entity() const
 	{
-		return QUEEN_OBJECT(1);
+		return QUEEN_OBJECT::create_entity();
 	}
 
 	QUEEN_OBJECT create_empty() const 
 	{
-		return QUEEN_OBJECT(0);
+		return QUEEN_OBJECT::create_empty();
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,7 @@ struct TQueen
 
 	void _sprint_element(std::string& str, const QUEEN_OBJECT& v)
 	{
-		str += ntbase::tostr(v);
+		str += v.to_str();
 	}
 
 	bool is_empty_pos(unsigned int y, unsigned int x) const
