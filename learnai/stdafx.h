@@ -9,9 +9,6 @@
 #define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
 #endif						
 
-#include <stdio.h>
-#include <tchar.h>
-
-
+#include "pub.h"
 
 // TODO: reference additional headers your program requires here
