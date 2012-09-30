@@ -7,6 +7,7 @@
 #include <string>
 #include <algorithm>
 
+/** 提供基本的服务信息 */
 class ntbase
 {
 public:
@@ -32,6 +33,7 @@ public:
 	}
 };
 
+/** 提供一个pair式的pos */
 template<typename T>
 struct ntpos_t
 {
