@@ -94,6 +94,18 @@ struct flag_2d
 };
 
 template <unsigned int BOUND_SIZE>
+struct influence_range
+{
+	influence_range()
+	{
+		memset(this, 0, sizeof(*this));
+	}
+
+	typedef flag_2d<BOUND_SIZE, FORCE_DIR> force_flag_2d;
+	force_flag_2d inf_range[BOUND_SIZE][BOUND_SIZE];
+};
+
+template <unsigned int BOUND_SIZE>
 struct force_range
 {
 	force_range()
@@ -142,19 +154,81 @@ template<typename QUEEN_OBJECT, unsigned int A_BOUND_SIZE>
 struct ntqueen 
 {
 	enum { BOUND_SIZE=A_BOUND_SIZE };
-
-	QUEEN_OBJECT bound[BOUND_SIZE][BOUND_SIZE];
-
 	typedef ntpos_stack_uz<BOUND_SIZE> queen_stack;
 	typedef flag_2d<BOUND_SIZE, FORCE_DIR> force_flag_2d;
 	typedef flag_1d<BOUND_SIZE> force_flag_1d;
 	typedef force_range<BOUND_SIZE> queen_range;
+	typedef influence_range<BOUND_SIZE> queen_inf_range;
+	typedef QUEEN_OBJECT bound_t[BOUND_SIZE][BOUND_SIZE];
+
+	bound_t bound;
+	queen_inf_range influences;
 
 	ntqueen()
 	{
 		memset(this, 0, sizeof(*this));
+		_build_influences(influences);
 	}
 
+	void _build_inf_ele(unsigned int x, unsigned int y, force_flag_2d& out) const
+	{
+		unsigned int idx= 0;
+
+		out.clear();
+
+		for(int ax=0; ax<BOUND_SIZE; ++ax)
+		{
+			if (ax != x)
+			{
+				out.lines[idx].add(ax, y);
+			}
+		}
+
+		++idx;
+		for(int ay=0; ay<BOUND_SIZE; ++ay)
+		{
+			if (ay!= y)
+			{
+				out.lines[idx].add(x, ay);
+			}
+		}
+
+		++idx;
+		for(int ax=x+1, ay=y+1; ax<BOUND_SIZE && ay<BOUND_SIZE; ++ax, ++ay)
+		{
+			out.lines[idx].add(ax, ay);
+		}
+		for(int ax=x+1, ay=y-1; ax<BOUND_SIZE && ay>=0; ++ax, --ay)
+		{
+			out.lines[idx].add(ax, ay);
+		}
+
+		++idx;
+		for(int ax=x-1, ay=y+1; ax>=0 && ay<BOUND_SIZE; --ax, ++ay)
+		{
+			out.lines[idx].add(ax, ay);
+		}
+		for(int ax=x-1, ay=y-1; ax>=0 && ay>=0; --ax, --ay)
+		{
+			out.lines[idx].add(ax, ay);
+		}
+	}
+
+	void _build_influences(queen_inf_range& infrange)
+	{
+		for(unsigned int y=0; y<BOUND_SIZE; ++y)
+		{
+			for(unsigned int x=0; x<BOUND_SIZE; ++x)
+			{
+				_build_inf_ele(x, y, infrange.inf_range[y][x]);
+			}
+		}
+	}
+
+	const force_flag_2d& get_influence(unsigned int y, unsigned int x) const
+	{
+		return influences.inf_range[y][x];
+	}
 	//////////////////////////////////////////////////////////////////////////
 
 	bool layout_unique_v3(queen_stack& tk, queen_range& record)
@@ -177,8 +251,7 @@ struct ntqueen
 					continue;
 				}
 
-				force_flag_2d flag2d;
-				get_influence(x, y, flag2d);
+				const force_flag_2d& flag2d= get_influence(y, x);
 				unsigned int num= get_max_line(flag2d);
 				objs.push_back(force_obj(x, num));
 			}
@@ -235,13 +308,12 @@ struct ntqueen
 
 	void add_force_to_range(unsigned int y, unsigned int x, queen_range& record)
 	{
-		force_flag_2d out;
-		get_influence(x, y, out);
+		const force_flag_2d& out= get_influence(y, x);
 		for(unsigned int i=0; i<out.SIZE; ++i)
 		{
 			for(unsigned int j=0; j<out.lines[i].size; ++j)
 			{
-				ntpos_ui& pos= out.lines[i].pos[j];
+				const ntpos_ui& pos= out.lines[i].pos[j];
 				record.add_force(pos.y, pos.x);
 			}
 		}
@@ -250,13 +322,12 @@ struct ntqueen
 
 	void dec_force_to_range(unsigned int y, unsigned int x, queen_range& record)
 	{
-		force_flag_2d out;
-		get_influence(x, y, out);
+		const force_flag_2d& out= get_influence(y, x);
 		for(unsigned int i=0; i<out.SIZE; ++i)
 		{
 			for(unsigned int j=0; j<out.lines[i].size; ++j)
 			{
-				ntpos_ui& pos= out.lines[i].pos[j];
+				const ntpos_ui& pos= out.lines[i].pos[j];
 				record.dec_force(pos.y, pos.x);
 			}
 		}
@@ -356,51 +427,7 @@ struct ntqueen
 		return r;
 	}
 
-	void get_influence(unsigned int x, unsigned int y, force_flag_2d& out) const
-	{
-		unsigned int idx= 0;
-
-		out.clear();
-
-		for(int ax=0; ax<BOUND_SIZE; ++ax)
-		{
-			if (ax != x)
-			{
-				out.lines[idx].add(ax, y);
-			}
-		}
-
-		++idx;
-		for(int ay=0; ay<BOUND_SIZE; ++ay)
-		{
-			if (ay!= y)
-			{
-				out.lines[idx].add(x, ay);
-			}
-		}
-
-		++idx;
-		for(int ax=x+1, ay=y+1; ax<BOUND_SIZE && ay<BOUND_SIZE; ++ax, ++ay)
-		{
-			out.lines[idx].add(ax, ay);
-		}
-		for(int ax=x+1, ay=y-1; ax<BOUND_SIZE && ay>=0; ++ax, --ay)
-		{
-			out.lines[idx].add(ax, ay);
-		}
-
-		++idx;
-		for(int ax=x-1, ay=y+1; ax>=0 && ay<BOUND_SIZE; --ax, ++ay)
-		{
-			out.lines[idx].add(ax, ay);
-		}
-		for(int ax=x-1, ay=y-1; ax>=0 && ay>=0; --ax, --ay)
-		{
-			out.lines[idx].add(ax, ay);
-		}
-	}
-
-	bool put_test(unsigned int y, unsigned int x, bool log_invalid=false) const
+	bool put_test(unsigned int y, unsigned int x) const
 	{
 		if (!is_empty_pos(y, x))
 		{
@@ -414,15 +441,7 @@ struct ntqueen
 
 		ntqueen<QUEEN_OBJECT, BOUND_SIZE> obj(*this);
 		obj.set(y, x, create_entity() );
-		bool result= obj.is_valid();
-
-		if (log_invalid && !result)
-		{
-			printf("invalid!\n");
-			obj.view();
-		}
-
-		return result;
+		return obj.is_valid();
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -497,18 +516,19 @@ struct ntqueen
 
 	bool is_valid() const
 	{
-		force_flag_2d out;
 		for(unsigned int y= 0; y< BOUND_SIZE; ++y)
 		{
 			for(unsigned int x=0; x< BOUND_SIZE; ++x)
 			{
-				if (!is_empty_pos(y, x))
+				if (is_empty_pos(y, x))
 				{
-					get_influence(x, y, out);
-					if (counter_force(out) > 0)
-					{
-						return false;
-					}
+					continue;
+				}
+
+				const force_flag_2d& out= get_influence(y, x);
+				if (counter_force(out) > 0)
+				{
+					return false;
 				}
 			}
 		}
