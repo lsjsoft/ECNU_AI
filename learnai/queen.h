@@ -231,10 +231,10 @@ struct ntqueen
 	}
 	//////////////////////////////////////////////////////////////////////////
 
-	bool layout_unique_v3(queen_stack& tk, queen_range& record)
+	bool layout_unique_v3(queen_stack& tk, queen_range& record, int sy=0)
 	{
 		size_t size = tk.size();
-		for(unsigned int y=0; y<BOUND_SIZE; ++y)
+		for(unsigned int y=sy; y<BOUND_SIZE; ++y)
 		{
 			force_objs objs;
 			objs.reserve(BOUND_SIZE);
@@ -276,7 +276,7 @@ struct ntqueen
 					return true;
 				}
 
-				if (!layout_unique_v3(tk, record))
+				if (!layout_unique_v3(tk, record, sy+1))
 				{
 					set(y, x, create_empty());
 					tk.pop();
@@ -298,7 +298,7 @@ struct ntqueen
 	queen_stack layout_queen_v3()
 	{
 		queen_stack r;
-		r.log_enable= true;
+		//r.log_enable= true;
 		queen_range record;
 		layout_unique_v3(r, record);
 		return r;

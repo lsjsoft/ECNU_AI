@@ -41,11 +41,23 @@ struct chess_piece
 	}
 };
 
+
+void sum2(int n, int* __restrict a, int* __restrict b, int * c, int * d) 
+{
+	int i;
+	for (i = 0; i < n; i++) 
+	{
+		a[i] = b[i] + c[i];
+		c[i] = b[i] + d[i];
+	}
+}
+
 int main(int argc, _TCHAR* argv[])
 {
+
 	unsigned long t2= timeGetTime();
 
-	typedef ntqueen<chess_piece, 7> queen11;
+	typedef ntqueen<chess_piece, 8> queen11;
 	queen11 obj; 
 	queen11::queen_stack k= obj.layout_queen_v3(); 
 	obj.view();
@@ -55,6 +67,7 @@ int main(int argc, _TCHAR* argv[])
 	printf(k.log_content.c_str());
 
 	printf("%d\n", t3-t2);
+
 
 	return 0;
 }
